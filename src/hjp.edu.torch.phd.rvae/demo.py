@@ -11,8 +11,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn import init
-from torch.autograd import variable
-from email.policy import default
+from torch.autograd import Variable
+
 
 parser = argparse.ArgumentParser()
 
@@ -36,5 +36,29 @@ torch.manual_seed(args.seed)
 class RVAE(nn.Module):
     def __init__(self, word_dim, hid_size, enc_size):
         super(RVAE, self).__init__()
+        
+        self.WeC2P = nn.Linear(2 * word_dim, word_dim)
+        self.WeP2H = nn.Linear(word_dim, hid_size)
+        
+    def encoder(self, sent):
+        
+        row = sent.size()[0]
+        sent = Variable(sent)
+        parent = Variable(torch.FloatTensor(torch.randn(1, 20)))
+        for i in range(row):
+            if i == 0:
+                parent = sent[i]
+            else: 
+                parent = self.WeC2P(torch.cat((parent, sent[i]), 0))
 
+        return parent
+    
+rvae = RVAE(args.word_dim, args.hid_size, args.enc_size)
 
+def main():
+    sent = torch.FloatTensor(torch.randn(5, 20))
+    encode = rvae(sent)
+    print(encode)
+    
+if __name__ == "__main__":
+    main()
