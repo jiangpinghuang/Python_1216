@@ -14,15 +14,16 @@ import torch.optim as optim
 from torch.nn import init
 import torch.autograd as autograd
 from torch.autograd import Variable
+from random import shuffle
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--word_dim', dest='word_dim', type=int, help='word embedding dimension', default=20)
-parser.add_argument('--hid_size', dest='hid_size', type=int, help='hidden dimension size', default=50)
+parser.add_argument('--hid_size', dest='hid_size', type=int, help='hidden dimension size', default=100)
 parser.add_argument('--enc_size', dest='enc_size', type=int, help='encode dimension size', default=5)
 parser.add_argument('--epochs', dest='epochs', type=int, help='epochs for model training', default=20)
-parser.add_argument('--learning_rate', dest='learning_rate', type=float, help='learning_rate', default=1e-3)
-parser.add_argument('--init_weight', dest='init_weight', type=float, help='initial weight for OOV', default=1e-2)
+parser.add_argument('--learning_rate', dest='learning_rate', type=float, help='learning_rate', default=5e-3)
+parser.add_argument('--init_weight', dest='init_weight', type=float, help='initial weight for OOV', default=5e-1)
 parser.add_argument('--seed', dest='seed', type=int, help='random seed', default=2718281828)
 parser.add_argument('--emb_file', dest='emb_file', type=str, help='embedding file', default='/Users/hjp/MacBook/Workspace/Workshop/Corpus/bin/text.txt')
 parser.add_argument('--data_file', dest='data_file', type=str, help='data file', default='/Users/hjp/MacBook/Workspace/Workshop/Corpus/tmp/')
@@ -310,19 +311,23 @@ def train():
         start = time.time()   
         epoch_storage = 0
         train_correct = 0
-        for j  in range(len(train_data)):
+        random.shuffle(valid_data)
+        for j in range(len(valid_data)):
             # print(train_data[j])
-            label, sentm = build_matrix(train_data[j], ssc_vec)
+            label, sentm = build_matrix(valid_data[j], ssc_vec)
             # print(label)
             # print(sentm)
             sent = Variable(sentm)
             target = Variable(label)
             out, mu, va, sc = rvae(sent)
-            _, predicted = torch.max(sc.view(5, 1), 1)
+            _, predicted = torch.max(sc.view(1, 5), 1)
+            #print(sc)
+            #print(predicted[0].data[0], target.data[0])
             if predicted[0].data[0] == target.data[0]:
                 train_correct += 1
+                #print(predicted[0].data[0], target.data[0])
             loss = loss_function(out, sent, mu, va)
-            # loss = loss + cel_criterion(sc.view(1, 5), target) 
+            loss = loss + cel_criterion(sc.view(1, 5), target) 
             # print(loss)
             epoch_storage += loss.data[0]
             loss_storage.append(loss.data[0])
@@ -330,9 +335,9 @@ def train():
             loss.backward()    
             optimizer.step()
         print("total loss:")
-        print(epoch_storage / len(train_data))
+        print(epoch_storage / len(valid_data))
         print("total accu: ")
-        print(train_correct / len(train_data))
+        print(train_correct / len(valid_data))
         end = time.time()
         print("Cost time: " + set_timer(end - start))
         # plt.plot(range(args.epochs), loss_storage, label="loss", color="blue")
