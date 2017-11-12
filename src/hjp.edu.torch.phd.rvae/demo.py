@@ -1,12 +1,11 @@
-import codecs, sys
 import os
+import sys
 import math
 import time
+import codecs
 import random
 import argparse
-
 import numpy as np
-# import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -16,26 +15,24 @@ import torch.autograd as autograd
 from torch.autograd import Variable
 from random import shuffle
 
-parser = argparse.ArgumentParser()
 
+parser = argparse.ArgumentParser()
 parser.add_argument('--word_dim', dest='word_dim', type=int, help='word embedding dimension', default=20)
 parser.add_argument('--hid_size', dest='hid_size', type=int, help='hidden dimension size', default=50)
-parser.add_argument('--enc_size', dest='enc_size', type=int, help='encode dimension size', default=2)
+parser.add_argument('--enc_size', dest='enc_size', type=int, help='encode dimension size', default=10)
 parser.add_argument('--epochs', dest='epochs', type=int, help='epochs for model training', default=10)
 parser.add_argument('--learning_rate', dest='learning_rate', type=float, help='learning_rate', default=5e-3)
 parser.add_argument('--init_weight', dest='init_weight', type=float, help='initial weight for OOV', default=5e-1)
 parser.add_argument('--seed', dest='seed', type=int, help='random seed', default=2718281828)
-#parser.add_argument('--emb_file', dest='emb_file', type=str, help='embedding file', default='/Users/hjp/Downloads/glove.840B.300d.txt')
-parser.add_argument('--emb_file', dest='emb_file', type=str, help='embedding file', default='/Users/hjp/MacBook/Workspace/Workshop/Corpus/bin/text.txt')
-parser.add_argument('--data_file', dest='data_file', type=str, help='data file', default='/Users/hjp/MacBook/Workspace/Workshop/Corpus/sta/')
+parser.add_argument('--emb_file', dest='emb_file', type=str, help='embedding file', default='/Volumes/SANDISK/Workshop/Corpus/bin/text.txt')
+parser.add_argument('--data_file', dest='data_file', type=str, help='data file', default='/Volumes/SANDISK/Workshop/Corpus/imdb/data')
 
 
 args = parser.parse_args()
+torch.manual_seed(args.seed)
 use_gpu = torch.cuda.is_available()
-
 print(args)
 
-torch.manual_seed(args.seed)
 
 class RVAE(nn.Module):
     def __init__(self, word_dim, hid_size, enc_size):
@@ -54,7 +51,7 @@ class RVAE(nn.Module):
         self.WdP2C = nn.Linear(word_dim, 2 * word_dim)
         
         self.tanh = nn.ReLU()
-        self.soft = nn.LogSoftmax()#.LogSoftmax()
+        self.soft = nn.LogSoftmax()
         
     def encode(self, sent, node, size):
         parent = Variable(torch.FloatTensor(torch.randn(1, size)))
@@ -64,6 +61,7 @@ class RVAE(nn.Module):
                 parent = sent[i]
             else: 
                 parent = self.tanh(self.WeC2P(torch.cat((parent, sent[i]), 0)))
+                
         hid_code = self.tanh(self.WeH2H(self.tanh(self.WeP2H(parent))))
         mu = self.tanh(self.WeH2M(hid_code))
         va = self.tanh(self.WeH2D(hid_code))
@@ -110,12 +108,10 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
     return mse_loss + KLD
-
     
-rvae = RVAE(args.word_dim, args.hid_size, args.enc_size)
 
 cel_criterion = nn.CrossEntropyLoss()
-
+rvae = RVAE(args.word_dim, args.hid_size, args.enc_size)
 optimizer = optim.Adam(rvae.parameters(), lr=args.learning_rate)
 
 
@@ -170,13 +166,13 @@ def read_embedding():
     return emb_voc, emb_vec
 
 
-oov = 0
-voc = 0
+oov, voc = 0, 0
 
 
 def build_embedding(ssc_voc, ssc_vec, line, emb_voc, emb_vec):
     global oov, voc
     tokens = line.split()
+    
     for i in range(len(tokens)):
         if tokens[i] not in ssc_voc:
             voc += 1
@@ -219,9 +215,9 @@ def build_semcom(line, ssc_vec):
     sents = line.split('\t')
     tokens = sents[1].split()
     tags = sents[2].split()
-    label = torch.LongTensor([int(sents[0])])
-    
+    label = torch.LongTensor([int(sents[0])])    
     row, idx = 0, 0
+    
     for i in range(len(tags)):
         if tags[i][0:1] == 'b' or tags[i][0:1] == 'o':
             row += 1
@@ -257,20 +253,15 @@ def set_timer(sec):
 
 
 def train():
+    accu_best, accu_test = 0, 0
     emb_voc, emb_vec = read_embedding()
     train_data, valid_data, test_data, ssc_voc, ssc_vec = read_corpus(emb_voc, emb_vec)
     
-    #loss_storage = []
-    accu_best = 0
-    accu_test = 0
-    
     for i in range(args.epochs): 
         start = time.time()   
-        epoch_storage = 0
-        train_correct = 0
-        valid_correct = 0
-        test_correct = 0
         random.shuffle(train_data)
+        epoch_storage, train_correct, valid_correct, test_correct = 0, 0, 0, 0
+
         for j in range(len(train_data)):
             label, sentm = build_matrix(train_data[j], ssc_vec)
             sent = Variable(sentm)
@@ -282,7 +273,6 @@ def train():
             loss = loss_function(out, sent, mu, va)
             loss = loss + cel_criterion(sc.view(1, args.enc_size), target) 
             epoch_storage += loss.data[0]
-            #loss_storage.append(loss.data[0])
             optimizer.zero_grad()
             loss.backward()    
             optimizer.step()
@@ -314,15 +304,11 @@ def train():
             print("epochs: " + str(i) + " test accu: " + str(test_correct / len(test_data)))
         end = time.time()
         print("cost time: " + set_timer(end - start))
-        # plt.plot(range(args.epochs), loss_storage, label="loss", color="blue")
-        # plt.legend()
-        # plt.show() 
- 
+        
  
 def main():
     train()
-    print("oov: ", oov)
-    print("voc: ", voc)
+    print("oov: ", oov, "\tvoc: ", voc)
 
 
 if __name__ == "__main__":

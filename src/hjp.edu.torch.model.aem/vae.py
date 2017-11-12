@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 import argparse
 import torch
 import torch.utils.data
@@ -81,13 +82,7 @@ if args.cuda:
 
 def loss_function(recon_x, x, mu, logvar):
     BCE = F.binary_cross_entropy(recon_x, x.view(-1, 784))
-
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    # Normalise by same number of elements as in reconstruction
     KLD /= args.batch_size * 784
 
     return BCE + KLD
@@ -99,6 +94,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 def train(epoch):
     model.train()
     train_loss = 0
+    
     for batch_idx, (data, _) in enumerate(train_loader):
         data = Variable(data)
         if args.cuda:
@@ -122,6 +118,7 @@ def train(epoch):
 def test(epoch):
     model.eval()
     test_loss = 0
+    
     for i, (data, _) in enumerate(test_loader):
         if args.cuda:
             data = data.cuda()
@@ -148,3 +145,4 @@ for epoch in range(1, args.epochs + 1):
     sample = model.decode(sample).cpu()
     save_image(sample.data.view(64, 1, 28, 28),
                'results/sample_' + str(epoch) + '.png')
+
