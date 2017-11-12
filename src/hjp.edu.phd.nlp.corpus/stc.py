@@ -89,7 +89,7 @@ def imdb_data(imdb_dir, imdb_file):
 
 
 def main():
-    print("The program is implementing, please waiting...")
+    print("The program is running, please waiting...")
     sait_data_file = "/Volumes/SanDisk/Workshop/Corpus/sait/src/sait.csv"
     sait_sent_file = "/Volumes/SanDisk/Workshop/Corpus/sait/data/sait.txt"
     sait_data(sait_data_file, sait_sent_file)
