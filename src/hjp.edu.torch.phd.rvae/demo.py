@@ -25,7 +25,7 @@ parser.add_argument('--learning_rate', dest='learning_rate', type=float, help='l
 parser.add_argument('--init_weight', dest='init_weight', type=float, help='initial weight for OOV', default=5e-1)
 parser.add_argument('--seed', dest='seed', type=int, help='random seed', default=2718281828)
 parser.add_argument('--emb_file', dest='emb_file', type=str, help='embedding file', default='/Volumes/SANDISK/Workshop/Corpus/bin/text.txt')
-parser.add_argument('--data_file', dest='data_file', type=str, help='data file', default='/Volumes/SANDISK/Workshop/Corpus/imdb/data')
+parser.add_argument('--data_file', dest='data_file', type=str, help='data file', default='/Volumes/SANDISK/Workshop/Corpus/imdb/tmp')
 
 
 args = parser.parse_args()
@@ -50,7 +50,7 @@ class RVAE(nn.Module):
         self.WdH2P = nn.Linear(hid_size, word_dim)
         self.WdP2C = nn.Linear(word_dim, 2 * word_dim)
         
-        self.tanh = nn.ReLU()
+        self.tanh = nn.Tanh()
         self.soft = nn.LogSoftmax()
         
     def encode(self, sent, node, size):
@@ -276,7 +276,7 @@ def train():
             optimizer.zero_grad()
             loss.backward()    
             optimizer.step()
-        print("total loss:" + str(epoch_storage / len(train_data)))
+        print("total loss: " + str(epoch_storage / len(train_data)))
         print("train accu: " + str(train_correct / len(train_data)))
         
         for j in range(len(valid_data)):
@@ -301,7 +301,7 @@ def train():
                 _, predicted = torch.max(sc.view(1, args.enc_size), 1)
                 if predicted[0].data[0] == target.data[0]:
                     test_correct += 1
-            print("epochs: " + str(i) + " test accu: " + str(test_correct / len(test_data)))
+            print("epochs: " + str(i+1) + " test accu: " + str(test_correct / len(test_data)))
         end = time.time()
         print("cost time: " + set_timer(end - start))
         
