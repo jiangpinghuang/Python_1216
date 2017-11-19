@@ -301,7 +301,7 @@ def train():
                 _, predicted = torch.max(sc.view(1, args.enc_size), 1)
                 if predicted[0].data[0] == target.data[0]:
                     test_correct += 1
-            print("epochs: " + str(i+1) + " test accu: " + str(test_correct / len(test_data)))
+            print("epochs: " + str(i + 1) + " test accu: " + str(test_correct / len(test_data)))
         end = time.time()
         print("cost time: " + set_timer(end - start))
         
