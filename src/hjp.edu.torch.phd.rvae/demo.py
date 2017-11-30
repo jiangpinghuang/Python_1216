@@ -115,6 +115,11 @@ rvae = RVAE(args.word_dim, args.hid_size, args.enc_size)
 optimizer = optim.Adam(rvae.parameters(), lr=args.learning_rate)
 
 
+if use_gpu:
+    rvae = rave.cuda()
+    cel_criterion = cel_criterion.cuda()
+
+
 def sentiment_corpus(srcFile, tarFile):
     wrtFile = codecs.open(tarFile, 'a+', 'utf-8')    
     with open(srcFile, encoding='utf-8') as f:
@@ -266,11 +271,16 @@ def train():
             label, sentm = build_matrix(train_data[j], ssc_vec)
             sent = Variable(sentm)
             target = Variable(label)
+            if use_gpu:
+                sent = sent.cuda()
+                target = target.cuda()
             out, mu, va, sc = rvae(sent)
             _, predicted = torch.max(sc.view(1, args.enc_size), 1)
             if predicted[0].data[0] == target.data[0]:
                 train_correct += 1
             loss = loss_function(out, sent, mu, va)
+            if use_gpu:
+                loss = loss.cuda()
             loss = loss + cel_criterion(sc.view(1, args.enc_size), target) 
             epoch_storage += loss.data[0]
             optimizer.zero_grad()
@@ -283,6 +293,9 @@ def train():
             label, sentm = build_matrix(valid_data[j], ssc_vec)
             sent = Variable(sentm)
             target = Variable(label)
+            if use_gpu:
+                sent = sent.cuda()
+                target = target.cuda()
             out, mu, va, sc = rvae(sent)
             _, predicted = torch.max(sc.view(1, args.enc_size), 1)
             if predicted[0].data[0] == target.data[0]:
@@ -297,6 +310,9 @@ def train():
                 label, sentm = build_matrix(test_data[j], ssc_vec)
                 sent = Variable(sentm)
                 target = Variable(label)
+                if use_gpu:
+                    sent = sent.cuda()
+                    target = target.cuda()
                 out, mu, va, sc = rvae(sent)
                 _, predicted = torch.max(sc.view(1, args.enc_size), 1)
                 if predicted[0].data[0] == target.data[0]:
